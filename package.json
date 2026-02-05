@@ -1,0 +1,14 @@
+{
+  "name": "portfolio-profissional",
+  "version": "1.0.0",
+  "description": "Portfólio Profissional - Site pessoal com CI/CD via GitHub Actions",
+  "scripts": {
+    "lint": "htmlhint \"**/*.html\" --config .htmlhintrc",
+    "test": "echo \"Linting...\" && npm run lint"
+  },
+  "devDependencies": {
+    "htmlhint": "^1.1.4"
+  },
+  "author": "RPV",
+  "license": "MIT"
+}

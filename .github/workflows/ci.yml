@@ -1,0 +1,150 @@
+name: CI - Validação de Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validacao:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # ── Etapa 1: Verificar existência do index.html ──
+      - name: Verificar existência do index.html
+        run: |
+          if [ ! -f "index.html" ]; then
+            echo "❌ ERRO: O arquivo index.html não foi encontrado na raiz do projeto!"
+            echo "O GitHub Pages exige um arquivo index.html na raiz para funcionar."
+            exit 1
+          fi
+          echo "✅ index.html encontrado na raiz do projeto."
+
+      # ── Etapa 2: Executar Linter HTML ──
+      - name: Executar Linter (HTMLHint)
+        run: npm run lint
+
+      # ── Etapa 3: Verificar tamanho dos arquivos (máx 500KB) ──
+      - name: Verificar tamanho dos arquivos (máx 500KB)
+        run: |
+          echo "🔍 Verificando arquivos maiores que 500KB..."
+          LARGE_FILES=$(find . -type f -not -path './.git/*' -not -path './node_modules/*' -size +500k)
+          if [ -n "$LARGE_FILES" ]; then
+            echo "❌ ERRO: Os seguintes arquivos excedem 500KB:"
+            echo "$LARGE_FILES"
+            echo ""
+            echo "Reduza o tamanho desses arquivos antes de fazer o merge."
+            exit 1
+          fi
+          echo "✅ Todos os arquivos estão dentro do limite de 500KB."
+
+      # ── Etapa 4: Varredura de comentários e termos sensíveis ──
+      - name: Varredura de termos proibidos (TODO, FIXME, senha, password)
+        run: |
+          echo "🔍 Buscando termos proibidos no código..."
+          FOUND=0
+
+          if grep -r -n -i "TODO" --include="*.html" --include="*.css" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Encontrado 'TODO' no código."
+            FOUND=1
+          fi
+
+          if grep -r -n -i "FIXME" --include="*.html" --include="*.css" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Encontrado 'FIXME' no código."
+            FOUND=1
+          fi
+
+          if grep -r -n -i "senha" --include="*.html" --include="*.css" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Encontrado 'senha' no código."
+            FOUND=1
+          fi
+
+          if grep -r -n -i "password" --include="*.html" --include="*.css" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Encontrado 'password' no código."
+            FOUND=1
+          fi
+
+          if [ "$FOUND" -eq 1 ]; then
+            echo ""
+            echo "❌ ERRO: Termos proibidos encontrados! Remova TODO, FIXME, senha e password antes do merge."
+            exit 1
+          fi
+          echo "✅ Nenhum termo proibido encontrado."
+
+      # ── Etapa 5: Verificar links e caminhos de imagens ──
+      - name: Verificar links e caminhos de imagens
+        run: |
+          echo "🔍 Verificando caminhos de imagens locais..."
+          ERRORS=0
+
+          # Extrair caminhos de src="" das tags img (apenas caminhos locais)
+          SRCS=$(grep -o -E 'src="[^"]*"' index.html | sed 's/src="//;s/"//' | grep -v '^http' | grep -v '^//')
+          for SRC in $SRCS; do
+            if [ ! -f "$SRC" ]; then
+              echo "❌ Arquivo referenciado não encontrado: $SRC"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "✅ Encontrado: $SRC"
+            fi
+          done
+
+          # Verificar se links externos retornam código HTTP válido
+          echo ""
+          echo "🔍 Verificando links externos..."
+          LINKS=$(grep -o -E 'href="https?://[^"]*"' index.html | sed 's/href="//;s/"//')
+          for LINK in $LINKS; do
+            # Ignorar links de fontes/CDN que precisam de headers especiais
+            if echo "$LINK" | grep -q -E 'fonts.googleapis|fonts.gstatic|cdnjs.cloudflare'; then
+              echo "⏭️  Ignorando CDN/fontes: $LINK"
+              continue
+            fi
+            HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -L --max-time 10 "$LINK" || echo "000")
+            if [ "$HTTP_CODE" -ge 400 ] || [ "$HTTP_CODE" = "000" ]; then
+              echo "❌ Link inválido (HTTP $HTTP_CODE): $LINK"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "✅ Link válido (HTTP $HTTP_CODE): $LINK"
+            fi
+          done
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo ""
+            echo "❌ ERRO: $ERRORS link(s)/caminho(s) inválido(s) encontrado(s)!"
+            exit 1
+          fi
+          echo ""
+          echo "✅ Todos os links e caminhos de imagens estão válidos."
+
+      # ── Notificação de Falha ──
+      - name: Notificação de falha
+        if: failure()
+        run: |
+          echo "::error::❌ A pipeline de CI falhou! Verifique os logs acima para corrigir os erros."
+          echo "📧 Em um ambiente real, aqui seria enviada uma notificação por e-mail, Discord ou Slack."
+          echo ""
+          echo "Para configurar notificações reais, adicione uma das opções:"
+          echo "  - E-mail: use a action 'dawidd6/action-send-mail@v3'"
+          echo "  - Discord: use a action 'sarisia/actions-status-discord@v1'"
+          echo "  - Slack: use a action 'slackapi/slack-github-action@v1'"
+
+      # ── Notificação de Sucesso ──
+      - name: Notificação de sucesso
+        if: success()
+        run: |
+          echo "✅ Pipeline de CI concluída com sucesso!"
+          echo "O código passou em todas as validações e está pronto para merge."

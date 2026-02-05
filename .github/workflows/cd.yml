@@ -1,0 +1,58 @@
+name: CD - Deploy para GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Fazer upload dos artefatos
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy para GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # ── Notificação de Falha no Deploy ──
+      - name: Notificação de falha no deploy
+        if: failure()
+        run: |
+          echo "::error::❌ O deploy para GitHub Pages falhou!"
+          echo "📧 Em um ambiente real, uma notificação seria enviada para a equipe."
+          echo ""
+          echo "Opções de notificação:"
+          echo "  - E-mail: use 'dawidd6/action-send-mail@v3'"
+          echo "  - Discord: use 'sarisia/actions-status-discord@v1'"
+          echo "  - Slack: use 'slackapi/slack-github-action@v1'"
+
+      # ── Notificação de Sucesso ──
+      - name: Notificação de sucesso no deploy
+        if: success()
+        run: |
+          echo "✅ Deploy realizado com sucesso!"
+          echo "🌐 O site está disponível em: ${{ steps.deployment.outputs.page_url }}"
