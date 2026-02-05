@@ -1,5 +1,8 @@
 # Portfólio Profissional
 
+![CI - Validação de Pull Request](https://github.com/hugorsgarcia/trabalho/actions/workflows/ci.yml/badge.svg)
+![CD - Deploy para GitHub Pages](https://github.com/hugorsgarcia/trabalho/actions/workflows/cd.yml/badge.svg)
+
 ## Sobre o Projeto
 
 Site de portfólio profissional desenvolvido com HTML5, CSS3 e JavaScript. O projeto conta com uma pipeline completa de CI/CD usando GitHub Actions para garantir a qualidade e a publicação automática do código.

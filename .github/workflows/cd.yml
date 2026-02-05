@@ -3,7 +3,7 @@ name: CD - Deploy para GitHub Pages
 on:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read
