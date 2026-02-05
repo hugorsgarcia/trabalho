@@ -1,10 +1,5 @@
 # Portfólio Profissional
 
-![CI - Validação de Pull Request](https://github.com/SEU_USUARIO/SEU_REPOSITORIO/actions/workflows/ci.yml/badge.svg)
-![CD - Deploy para GitHub Pages](https://github.com/SEU_USUARIO/SEU_REPOSITORIO/actions/workflows/cd.yml/badge.svg)
-
-> **Importante:** Substitua `SEU_USUARIO` e `SEU_REPOSITORIO` nos badges acima pelo seu nome de usuário e nome do repositório no GitHub.
-
 ## Sobre o Projeto
 
 Site de portfólio profissional desenvolvido com HTML5, CSS3 e JavaScript. O projeto conta com uma pipeline completa de CI/CD usando GitHub Actions para garantir a qualidade e a publicação automática do código.
