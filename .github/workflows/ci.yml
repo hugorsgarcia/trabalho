@@ -31,9 +31,8 @@ jobs:
           echo "✅ Arquivo src/css/style.css encontrado."
 
       - name: Linting Profissional (HTMLHint)
-        uses: htmlhint/action@v1
-        with:
-          target_pattern: 'src/index.html'
+        run: |
+          npx htmlhint src/index.html
 
       - name: Relatório de Auditoria
         if: success()
